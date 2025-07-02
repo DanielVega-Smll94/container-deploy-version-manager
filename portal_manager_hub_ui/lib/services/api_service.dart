@@ -3,13 +3,22 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:portal_manager_hub_ui/services/sse_io.dart';
 import '../models/container_info.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'sse_web.dart'   if (dart.library.io) 'sse_mobile.dart';
+import 'sse_web.dart' if (dart.library.io) 'sse_mobile.dart';
 
 class ApiService {
-  final _base = 'http://localhost:8081/api';
+  // final _base = 'http://192.168.14.149:8081/api';
+  // Elegimos el host según plataforma:
+  static String get _host {
+    if (kIsWeb) return 'localhost';
+    if (Platform.isAndroid) return '192.168.14.149';
+    // iOS Simulator también mapea a 'localhost'
+    return '192.168.14.149';
+  }
+
+  // Y en lugar de hardcodear localhost, usamos nuestra getter:
+  final _base = 'http://$_host:8081/api';
 
   Future<List<ContainerInfo>> listContainers(int servidorId) async {
     final uri = Uri.parse('$_base/ssh/execute/json');
@@ -134,7 +143,8 @@ class ApiService {
   ///     tailLines: ...
   ///   )
   ///
-  Stream<String> streamLogsSseSSH({
+  ///
+  /*Stream<String> streamLogsSseSSH({
     required int servidorId,
     required String containerName,
     int tailLines = 200,
@@ -143,12 +153,10 @@ class ApiService {
         '?tailLines=$tailLines';
 
     // Si es Web, usa EventSource; si no, HttpClient
-    if (kIsWeb) {
-      return streamWithEventSource(url);
-    } else {
-      return streamWithHttpClient(url);
-    }
-  }
+    return kIsWeb
+        ? streamWithEventSource(url)
+        : streamWithHttpClient(url);
+  }*/
 }
 
 
