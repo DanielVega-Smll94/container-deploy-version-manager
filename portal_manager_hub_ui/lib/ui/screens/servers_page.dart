@@ -48,7 +48,7 @@ class ServersPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                       builder: (_) =>
-                          ContainersList(s.id)
+                          ContainersList(s.id, s.host)
                   ),
                 );
               });
