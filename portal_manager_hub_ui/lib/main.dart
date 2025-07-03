@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'ui/screens/servers_list.dart';
+import 'package:portal_manager_hub_ui/ui/screens/servers_page.dart';
+import 'package:portal_manager_hub_ui/ui/theme/theme.dart';
+import 'ui/screens/containers_list.dart';
 
 void main() => runApp(const MyApp());
 
@@ -8,7 +10,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext c) => MaterialApp(
     title: 'Portal Manager Hub',
-    theme: ThemeData(primarySwatch: Colors.blue),
-    home: const ContainersList(5),
+    theme: buildAppTheme(),
+    debugShowCheckedModeBanner: false,
+    //theme: ThemeData(primarySwatch: Colors.blue),
+    home: const ServersPage()//ContainersList(5),
   );
 }

@@ -71,6 +71,12 @@ class _ContainersListState extends State<ContainersList> {
                           c.id,
                         );
                       }
+                      else if (act == 'remove') {
+                        await ApiService().removeContainer(
+                          widget.servidorId,
+                          c.id,
+                        );
+                      }
 
                       // 2) Recupera la nueva lista
                       final listaActualizada = await ApiService()
@@ -90,6 +96,7 @@ class _ContainersListState extends State<ContainersList> {
                     PopupMenuItem(value: 'start', child: Text('Start')),
                     PopupMenuItem(value: 'stop', child: Text('Stop')),
                     PopupMenuItem(value: 'restart', child: Text('Restart')),
+                    PopupMenuItem(value: 'remove', child: Text('Remove')),
                     PopupMenuItem(
                       value: 'logs',
                       child: Text('Logs'),
