@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../models/DockerSummary.dart';
 import '../models/servidor.dart';
 
 class ServidoresService {
@@ -22,5 +23,13 @@ class ServidoresService {
     } else {
       throw Exception('Error al cargar servidores: ${res.statusCode}');
     }
+  }
+
+  static Future<DockerSummary> fetchSummary(int serverId) async {
+    final res = await http.get(Uri.parse('$_baseUrl/servers/$serverId/summary'));
+    if (res.statusCode == 200) {
+      return DockerSummary.fromJson(json.decode(res.body) as Map<String, dynamic>);
+    }
+    throw Exception('Error fetching summary (${res.statusCode})');
   }
 }

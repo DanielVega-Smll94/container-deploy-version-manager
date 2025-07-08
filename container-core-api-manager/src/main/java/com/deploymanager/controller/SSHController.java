@@ -98,23 +98,4 @@ public class SSHController {
         return sshService.streamContainerLogs(servidorId, containerId, tailLines);
     }
 
-    @PostMapping("/images/pull")
-    public ResponseEntity<?> pullImage(
-            @RequestParam Long servidorId,
-            @RequestParam String imageName
-    ) {
-        return sshService.pullImage(servidorId, imageName);
-    }
-
-    /**
-     * Elimina una imagen remota: docker rmi <imageName>
-     */
-    @DeleteMapping("/images/{imageName}")
-    public ResponseEntity<?> removeImage(
-            @PathVariable String imageName,
-            @RequestParam Long servidorId
-    ) {
-        // Simplemente delega y devuelve lo que arme el servicio:
-        return sshService.removeImage(servidorId, imageName);
-    }
 }

@@ -9,7 +9,7 @@ import 'sse_client.dart';   // export condicional
 
 class StreamService {
   // final _base = 'http://192.168.14.149:8081/api';
-
+  //10.0.2.2
   static String get _host {
     if (kIsWeb) return 'localhost';
     if (Platform.isAndroid) return '192.168.14.149';

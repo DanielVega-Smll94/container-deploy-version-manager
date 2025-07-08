@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:portal_manager_hub_ui/models/DockerSummary.dart';
+import 'package:portal_manager_hub_ui/services/servidores.dart';
+import 'package:portal_manager_hub_ui/ui/screens/summary_cards.dart';
 import '../../models/container_info.dart';
 import '../../services/api_service.dart';
+import '../widgets/remove_choice_dialog.dart';
 import 'container_logs.dart';
 import '../../models/filters.dart';
 
@@ -14,7 +18,8 @@ class ContainersList extends StatefulWidget {
   State<ContainersList> createState() => _ContainersListState();
 }
 
-class _ContainersListState extends State<ContainersList>  with SingleTickerProviderStateMixin {
+class _ContainersListState extends State<ContainersList>
+    with SingleTickerProviderStateMixin {
   late Future<List<ContainerInfo>> _future;
   String _filter = '';
   late AnimationController _iconController;
@@ -54,44 +59,55 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
   bool _matchesStatus(ContainerInfo c) {
     final isUp = c.status.toLowerCase().startsWith('up');
     switch (_statusFilter) {
-      case StatusFilter.active: return isUp;
-      case StatusFilter.inactive: return !isUp;
+      case StatusFilter.active:
+        return isUp;
+      case StatusFilter.inactive:
+        return !isUp;
       case StatusFilter.all:
-      default: return true;
+      default:
+        return true;
     }
   }
 
   void _handleAction(String act, ContainerInfo c) async {
-  try {
-    switch (act) {
-      case 'start':
-        await ApiService().startContainer(widget.servidorId, c.id);
-        break;
-      case 'stop':
-        await ApiService().stopContainer(widget.servidorId, c.id);
-        break;
-      case 'restart':
-        await ApiService().restartContainer(widget.servidorId, c.id);
-        break;
-      case 'remove':
-        await ApiService().removeContainer(widget.servidorId, c.id);
-        break;
-      case 'logs':
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ContainerLogs(
-            servidorId: widget.servidorId,
-            containerId: c.id,
-            containerName: c.names,
-          )),
-        );
-        return;
+    try {
+      switch (act) {
+        case 'start':
+          await ApiService().startContainer(widget.servidorId, c.id);
+          break;
+        case 'stop':
+          await ApiService().stopContainer(widget.servidorId, c.id);
+          break;
+        case 'restart':
+          await ApiService().restartContainer(widget.servidorId, c.id);
+          break;
+        case 'remove':
+          final choice = await showRemoveChoiceDialog(context);
+          if (choice == 'container') {
+            await ApiService().removeContainer(widget.servidorId, c.id);
+          } else if (choice == 'both') {
+            await ApiService().removeContainer(widget.servidorId, c.id);
+            await ApiService().deleteImage(serverId: widget.servidorId, imageName: c.image);
+          }
+          break;
+        case 'logs':
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ContainerLogs(
+                servidorId: widget.servidorId,
+                containerId: c.id,
+                containerName: c.names,
+              ),
+            ),
+          );
+          return;
+      }
+      await _refresh(); // recarga la lista
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
-    await _refresh(); // recarga la lista
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +115,29 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
       appBar: AppBar(title: Text('Contenedores del ${widget.host}')),
       body: Column(
         children: [
+          FutureBuilder<DockerSummary>(
+            future: ServidoresService.fetchSummary(widget.servidorId),
+            builder: (ctx, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+              if (snap.hasError) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: Text('Error al cargar resumen')),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: SummaryCards( sum: snap.data!, servidorId:  widget.servidorId),
+              );
+            },
+          ),
           // → Search bar separada
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -111,14 +150,15 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none
-                )
+                  borderSide: BorderSide.none,
+                ),
               ),
               onChanged: (v) => setState(() {
                 _filter = v.trim().toLowerCase();
               }),
-          )),
-          
+            ),
+          ),
+
           // — ChoiceChips de estado —
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -126,8 +166,8 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
               spacing: 8,
               children: StatusFilter.values.map((sf) {
                 final label = {
-                  StatusFilter.all:      'Todos',
-                  StatusFilter.active:   'Activos',
+                  StatusFilter.all: 'Todos',
+                  StatusFilter.active: 'Activos',
                   StatusFilter.inactive: 'Inactivos',
                 }[sf]!;
                 return ChoiceChip(
@@ -154,7 +194,7 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
 
                   // Aplico búsqueda AND filtro de estado
                   final todos = snap.data ?? [];
-                  final filtrados = todos.where((c){
+                  final filtrados = todos.where((c) {
                     final matchName = c.names.toLowerCase().contains(_filter);
                     final matchStatus = _matchesStatus(c);
                     return matchName && matchStatus;
@@ -172,25 +212,37 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
                       final c = filtrados[i];
                       final isUp = c.status.toLowerCase().startsWith('up');
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
                         child: Card(
                           margin: EdgeInsets.zero,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 2,
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             leading: RotationTransition(
                               turns: _iconController,
                               child: CircleAvatar(
                                 backgroundColor: Colors.blue.shade50,
-                                child: FaIcon(FontAwesomeIcons.cube,
-                                    color: Colors.blue.shade700),
+                                child: FaIcon(
+                                  FontAwesomeIcons.cube,
+                                  color: Colors.blue.shade700,
+                                ),
                               ),
                             ),
-                            title: Text(c.names,
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                            title: Text(
+                              c.names,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -219,7 +271,9 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
                                 Text(
                                   'Created: ${c.createdAt.split(' -')[0]}',
                                   style: const TextStyle(
-                                      fontSize: 11, color: Colors.black54),
+                                    fontSize: 11,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                               ],
                             ),
@@ -234,19 +288,36 @@ class _ContainersListState extends State<ContainersList>  with SingleTickerProvi
                                 const SizedBox(width: 8),
                                 PopupMenuButton<String>(
                                   icon: const Icon(Icons.more_vert),
-                                  onSelected: (act)  => _handleAction(act, c),
+                                  onSelected: (act) => _handleAction(act, c),
                                   itemBuilder: (_) {
-                                    final isUp = c.status.toLowerCase().startsWith('up');
+                                    final isUp = c.status
+                                        .toLowerCase()
+                                        .startsWith('up');
                                     return [
                                       if (!isUp)
-                                        const PopupMenuItem(value: 'start',   child: Text('Start')),
+                                        const PopupMenuItem(
+                                          value: 'start',
+                                          child: Text('Start'),
+                                        ),
                                       if (isUp) ...[
-                                        const PopupMenuItem(value: 'stop',    child: Text('Stop')),
-                                        const PopupMenuItem(value: 'restart', child: Text('Restart')),
+                                        const PopupMenuItem(
+                                          value: 'stop',
+                                          child: Text('Stop'),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'restart',
+                                          child: Text('Restart'),
+                                        ),
                                       ],
-                                      const PopupMenuItem(value: 'remove',  child: Text('Remove')),
+                                      const PopupMenuItem(
+                                        value: 'remove',
+                                        child: Text('Remove'),
+                                      ),
                                       const PopupMenuDivider(),
-                                      const PopupMenuItem(value: 'logs',    child: Text('Logs')),
+                                      const PopupMenuItem(
+                                        value: 'logs',
+                                        child: Text('Logs'),
+                                      ),
                                     ];
                                   },
                                 ),

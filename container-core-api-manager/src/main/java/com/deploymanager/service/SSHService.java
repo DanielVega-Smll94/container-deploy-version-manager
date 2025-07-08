@@ -1,6 +1,7 @@
 package com.deploymanager.service;
 
 import com.deploymanager.dto.ContainerInfo;
+import com.deploymanager.dto.DockerImageDto;
 import com.deploymanager.dto.SSHExecRequest;
 import com.deploymanager.dto.SSHRequestDto;
 import com.deploymanager.mapper.ServidorMapper;
@@ -288,131 +289,21 @@ public class SSHService {
         }
     }
 
-    /**images*/
-    /**
-     * Ejecuta 'docker rmi <imageName>' por SSH y construye el ResponseEntity.
-     */
-    public ResponseEntity<?> removeImage(Long servidorId, String imageName) {
+    public String execCommand(Long servidorId, String comando) throws Exception {
+        // 1) Recupera datos de tu servidor
         Servidor srv = serverRepository.findById(servidorId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Servidor no encontrado: " + servidorId
-                ));
+                .orElseThrow(() -> new IllegalArgumentException("Servidor no encontrado: " + servidorId));
 
-        Session session = null;
-        ChannelExec channel = null;
-        try {
-            // 1) Conectar por SSH
-            session = new JSch()
-                    .getSession(srv.getUsername(), srv.getHost(), srv.getPort());
-            session.setPassword(srv.getPassword());
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect();
+        // 2) Construye el DTO manualmente
+        SSHRequestDto req = new SSHRequestDto();
+        req.setHost(srv.getHost());
+        req.setPort(srv.getPort());
+        req.setUsername(srv.getUsername());
+        req.setPassword(srv.getPassword());
+        req.setCommand(comando);
 
-            // 2) Comando docker rmi
-            channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("docker rmi " + imageName);
-
-            // 3) Capturar stdout y stderr
-            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
-            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-            channel.setOutputStream(stdout);
-            channel.setErrStream(stderr);
-
-            channel.connect();
-            while (!channel.isClosed()) {
-                Thread.sleep(50);
-            }
-
-            String out = stdout.toString(StandardCharsets.UTF_8).strip();
-            String err = stderr.toString(StandardCharsets.UTF_8).strip();
-
-            // 4) Preparar body
-            Map<String, String> body = new HashMap<>();
-            body.put("image", imageName);
-            body.put("stdout", out);
-            if (!err.isEmpty()) {
-                body.put("stderr", err);
-                return ResponseEntity
-                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(body);
-            }
-
-            return ResponseEntity.ok(body);
-
-        } catch (JSchException | InterruptedException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error al conectarse por SSH: " + e.getMessage(), e
-            );
-        } finally {
-            if (channel != null && channel.isConnected()) channel.disconnect();
-            if (session != null && session.isConnected()) session.disconnect();
-        }
-    }
-    /**
-     * Hace 'docker pull <imageName>' por SSH y arma el ResponseEntity.
-     */
-    public ResponseEntity<?> pullImage(Long servidorId, String imageName) {
-        Servidor srv = serverRepository.findById(servidorId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Servidor no encontrado: " + servidorId
-                ));
-
-        Session session = null;
-        ChannelExec channel = null;
-        try {
-            // 1) Conexión SSH
-            session = new JSch()
-                    .getSession(srv.getUsername(), srv.getHost(), srv.getPort());
-            session.setPassword(srv.getPassword());
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect();
-
-            // 2) Comando docker pull
-            channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("docker pull " + imageName);
-
-            // 3) Salida
-            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
-            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-            channel.setOutputStream(stdout);
-            channel.setErrStream(stderr);
-
-            channel.connect();
-
-            // Esperamos a que termine
-            while (!channel.isClosed()) {
-                Thread.sleep(50);
-            }
-
-            String out = stdout.toString(StandardCharsets.UTF_8).strip();
-            String err = stderr.toString(StandardCharsets.UTF_8).strip();
-
-            // 4) Armamos el body
-            Map<String, String> body = new HashMap<>();
-            body.put("image", imageName);
-            body.put("stdout", out);
-            if (!err.isEmpty()) {
-                body.put("stderr", err);
-                return ResponseEntity
-                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(body);
-            }
-
-            return ResponseEntity
-                    .ok(body);
-
-        } catch (JSchException | InterruptedException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error al conectarse por SSH: " + e.getMessage(), e
-            );
-        } finally {
-            if (channel != null && channel.isConnected()) channel.disconnect();
-            if (session != null && session.isConnected()) session.disconnect();
-        }
+        // 3) Llama a tu método existente
+        return executeCommand_request(req);
     }
 
      /**

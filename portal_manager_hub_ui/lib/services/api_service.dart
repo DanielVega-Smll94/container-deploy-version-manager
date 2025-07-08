@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:http/http.dart' as http;
+import '../models/ImagesInfo.dart';
 import '../models/container_info.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'sse_web.dart' if (dart.library.io) 'sse_mobile.dart';
@@ -157,6 +157,43 @@ class ApiService {
         ? streamWithEventSource(url)
         : streamWithHttpClient(url);
   }*/
+
+  Future<List<ImagesInfo>> listImages(int serverId) async {
+    final res = await http.get(Uri.parse('$_base/servers/$serverId/images'));
+    if (res.statusCode == 200) {
+      final List data = json.decode(res.body) as List;
+      return data.map((e) => ImagesInfo.fromJson(e)).toList();
+    }
+    throw Exception('Error ${res.statusCode} al listar imágenes');
+  }
+
+  /// Borra una imagen por ID
+  Future<void> deleteImage({
+    required int serverId,
+    String? imageId,
+    String? imageName,
+  }) async {
+
+    // 1) Montar map de parámetros
+    final params = <String, String>{};
+    if (imageId != null && imageId.isNotEmpty) {
+      params['imageId'] = imageId;
+    } else if (imageName != null && imageName.isNotEmpty) {
+      params['imageName'] = imageName;
+    } else {
+      throw Exception('Debe especificar imageId o imageName');
+    }
+
+    // 2) Construir Uri con queryParameters
+    final uri = Uri.parse('$_base/servers/$serverId/images')
+        .replace(queryParameters: params);
+    // 3) Llamada DELETE
+    final res = await http.delete(uri);
+    if (res.statusCode != 204) {
+      throw Exception('Error ${res.statusCode} borrando imagen');
+    }
+  }
+
 }
 
 
