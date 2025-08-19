@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/ImagesInfo.dart';
 import '../models/container_info.dart';
@@ -8,17 +9,23 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'sse_web.dart' if (dart.library.io) 'sse_mobile.dart';
 
 class ApiService {
+  static final String? _urlApi = dotenv.env['API_URL'];
+  static final String? _port = dotenv.env['API_PORT'];
+  static final String? _web = dotenv.env['API_URL_WEB_LOCAL'];
+  static final String? _path = dotenv.env['API_PATH'];
+  static final String? _protocol = dotenv.env['API_PROTOCOL'];
+
   // final _base = 'http://192.168.14.149:8081/api';
   // Elegimos el host según plataforma:
   static String get _host {
-    if (kIsWeb) return 'localhost';
-    if (Platform.isAndroid) return '192.168.14.149';
+    if (kIsWeb) return _web!;
+    if (Platform.isAndroid) return _urlApi!;
     // iOS Simulator también mapea a 'localhost'
-    return '192.168.14.149';
+    return _urlApi!;
   }
 
   // Y en lugar de hardcodear localhost, usamos nuestra getter:
-  final _base = 'http://$_host:8081/api';
+  final _base = '$_protocol://$_host:$_port$_path';
 
   Future<List<ContainerInfo>> listContainers(int servidorId) async {
     final uri = Uri.parse('$_base/ssh/execute/json');

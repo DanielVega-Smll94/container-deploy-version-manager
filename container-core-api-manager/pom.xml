@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.deploymanager</groupId>
-	<artifactId>container-core-apimanager</artifactId>
+	<artifactId>container-core-api-manager</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>container-core-apimanager</name>
+	<name>container-core-api-manager</name>
 	<description>Gestión de despliegues Docker vía SSH</description>
 	<url/>
 	<licenses>
@@ -54,11 +54,11 @@
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-		<dependency>
+		<!--<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
-		</dependency>
+		</dependency>-->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -121,10 +121,10 @@
 							<scope>provided</scope>-->
 
 						</path>
-						<path>
+						<!--<path>
 							<groupId>org.springframework.boot</groupId>
 							<artifactId>spring-boot-configuration-processor</artifactId>
-						</path>
+						</path>-->
 						<path>
 							<groupId>org.mapstruct</groupId>
 							<artifactId>mapstruct-processor</artifactId>

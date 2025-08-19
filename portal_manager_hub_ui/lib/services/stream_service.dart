@@ -2,23 +2,31 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter/foundation.dart';
 import 'sse_client.dart';   // export condicional
 
 class StreamService {
+  static final String? _url_api = dotenv.env['API_URL'];
+  static final String? _port = dotenv.env['API_PORT'];
+  static final String? _web = dotenv.env['API_URL_WEB_LOCAL'];
+  static final String? _path = dotenv.env['API_PATH'];
+  static final String? _protocol = dotenv.env['API_PROTOCOL'];
+
   // final _base = 'http://192.168.14.149:8081/api';
   //10.0.2.2
+
   static String get _host {
-    if (kIsWeb) return 'localhost';
-    if (Platform.isAndroid) return '192.168.14.149';
+    if (kIsWeb) return _web!;
+    if (Platform.isAndroid) return _url_api!;
     // iOS Simulator también mapea a 'localhost'
-    return '192.168.14.149';
+    return _url_api!;
   }
 
   // Y en lugar de hardcodear localhost, usamos nuestra getter:
-  final _base = 'http://$_host:8081/api';
+  final _base = '$_protocol://$_host:$_port$_path';
 
   /// SSE unificado para web y móvil:
   /*Stream<String> streamLogsSseSSH({
